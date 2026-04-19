@@ -12,6 +12,7 @@ app = FastAPI()
 
 
 @app.post("/")
+@app.post("/api/webhook")
 async def telegram_webhook(request: Request) -> Response:
     """Vercel serverless entrypoint for Telegram webhook updates."""
     headers = dict(request.headers)

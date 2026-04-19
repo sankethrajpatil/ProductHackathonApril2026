@@ -27,11 +27,11 @@ jobs:
       - name: Type check
         run: |
           . .venv/bin/activate
-          mypy bot/ --strict
+          mypy app/ --strict
       - name: Run tests
         run: |
           . .venv/bin/activate
-          pytest tests/ --asyncio-mode=auto --cov=bot --cov-report=term-missing
+          pytest tests/ --asyncio-mode=auto --cov=app --cov-report=term-missing
       - name: Check for hardcoded secrets
         run: |
-          ! grep -r --include='*.py' 'BOT_TOKEN\|API_KEY\|SECRET\|MONGO_URI' bot/ || (echo 'Hardcoded secret found!' && exit 1)
+          ! grep -r --include='*.py' 'BOT_TOKEN\|API_KEY\|SECRET\|MONGO_URI' app/ || (echo 'Hardcoded secret found!' && exit 1)

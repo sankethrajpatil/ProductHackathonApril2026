@@ -19,7 +19,7 @@ jobs:
         run: |
           python -m venv .venv
           . .venv/bin/activate
-          pip install -e ".[dev]"
+          pip install -r requirements.txt
       - name: Lint
         run: |
           . .venv/bin/activate

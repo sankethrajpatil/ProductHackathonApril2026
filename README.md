@@ -76,6 +76,14 @@ SplitBot is a next-generation Telegram bot for group expense tracking, powered b
 	mypy bot/ --strict
 	```
 
+5. **Set Telegram Webhook for Vercel**
+	```bash
+	python scripts/set_webhook.py
+	```
+	- Uses `BOT_TOKEN` and optional `TELEGRAM_WEBHOOK_SECRET` from environment.
+	- Webhook endpoint is fixed to:
+	  `https://splitbot-lilac.vercel.app/api/webhook`
+
 ---
 
 ## Project Structure

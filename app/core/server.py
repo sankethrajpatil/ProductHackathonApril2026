@@ -112,7 +112,11 @@ def build_server(
 
 async def set_telegram_webhook(bot: Bot, webhook_url: str, secret: str) -> None:
     """Register the webhook URL with Telegram, including the secret token."""
-    full_url = webhook_url.rstrip("/") + "/webhook"
+    normalized = webhook_url.rstrip("/")
+    if normalized.endswith("/api/webhook") or normalized.endswith("/webhook"):
+        full_url = normalized
+    else:
+        full_url = f"{normalized}/webhook"
     await bot.set_webhook(
         url=full_url,
         secret_token=secret or None,

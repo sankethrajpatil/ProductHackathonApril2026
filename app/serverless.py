@@ -71,6 +71,7 @@ async def get_bot_dp() -> Tuple[Any, Any]:
             router as ge_router,
             PassiveUserTrackingMiddleware,
         )
+        from app.handlers.start_handler import router as start_router
         from app.handlers.dashboard_handler import router as dash_router
         from app.handlers.export_handler import router as export_router
         from app.handlers.stars_handler import router as stars_router
@@ -81,6 +82,7 @@ async def get_bot_dp() -> Tuple[Any, Any]:
         from app.core.middlewares import AntiSpamMiddleware, ThrottleMiddleware
 
         _dp.include_router(ge_router)
+        _dp.include_router(start_router)
         _dp.include_router(dash_router)
         _dp.include_router(export_router)
         _dp.include_router(photo_router)

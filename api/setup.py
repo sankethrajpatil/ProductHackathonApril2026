@@ -57,7 +57,7 @@ class handler(BaseHTTPRequestHandler):
         await bot.set_webhook(
             url=url,
             secret_token=secret,
-            allowed_updates=["message", "chat_member"],
+            allowed_updates=["message", "chat_member", "callback_query", "pre_checkout_query"],
             drop_pending_updates=True,
         )
         logger.info("Webhook set → %s", url)

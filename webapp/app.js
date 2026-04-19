@@ -11,17 +11,227 @@ tg.expand();
 // Configuration
 // ---------------------------------------------------------------------------
 
-// The API base URL is relative when served from the same aiohttp server.
-// Override via a global if the webapp is hosted elsewhere.
 const API_BASE = window.__SPLITBOT_API_BASE || "";
-
-// Extract group_id from the start_param (set when the WebAppInfo button is
-// pressed — we encode the group chat ID there).
 const startParam = tg.initDataUnsafe?.start_param || "";
 const GROUP_ID = startParam || new URLSearchParams(window.location.search).get("group_id") || "";
-
-// Auth header — pass raw initData for server-side HMAC validation
 const AUTH_HEADER = tg.initData ? { Authorization: "tma " + tg.initData } : {};
+
+// Current user from Telegram
+const CURRENT_USER_ID = tg.initDataUnsafe?.user?.id || null;
+
+// ---------------------------------------------------------------------------
+// TON Connect
+// ---------------------------------------------------------------------------
+
+let tonConnector = null;
+let connectedWallet = null;
+let cachedTonPrice = null;
+let lastBalancesData = null;
+
+// TON Connect manifest — hosted alongside the app
+const TON_MANIFEST_URL = (window.location.origin || API_BASE) + "/tonconnect-manifest.json";
+
+function initTonConnect() {
+  if (typeof TonConnectSDK === "undefined") {
+    console.warn("TonConnect SDK not loaded");
+    return;
+  }
+
+  tonConnector = new TonConnectSDK.TonConnect({ manifestUrl: TON_MANIFEST_URL });
+
+  tonConnector.onStatusChange((wallet) => {
+    connectedWallet = wallet;
+    updateWalletUI();
+    if (wallet && GROUP_ID) {
+      saveWalletToServer(wallet.account.address);
+    }
+  });
+
+  // Restore existing session
+  tonConnector.restoreConnection().then(() => {
+    updateWalletUI();
+  });
+
+  // Show the wallet bar
+  const bar = document.getElementById("wallet-bar");
+  if (bar) bar.style.display = "flex";
+}
+
+function updateWalletUI() {
+  const label = document.getElementById("wallet-label");
+  const addr = document.getElementById("wallet-addr");
+  const btn = document.getElementById("wallet-btn");
+
+  if (connectedWallet) {
+    const rawAddr = connectedWallet.account.address;
+    const short = rawAddr.slice(0, 6) + "..." + rawAddr.slice(-4);
+    label.textContent = "TON Wallet Connected";
+    addr.textContent = short;
+    btn.textContent = "Disconnect";
+    btn.className = "btn btn-disconnect";
+  } else {
+    label.textContent = "Connect wallet to settle on-chain";
+    addr.textContent = "";
+    btn.textContent = "Connect Wallet";
+    btn.className = "btn btn-primary";
+  }
+}
+
+async function toggleWallet() {
+  if (!tonConnector) return;
+
+  if (connectedWallet) {
+    await tonConnector.disconnect();
+    connectedWallet = null;
+    updateWalletUI();
+    showToast("Wallet disconnected");
+  } else {
+    // Get available wallets and open the connection modal
+    const walletsList = await tonConnector.getWallets();
+    // Prefer Tonkeeper, then first available
+    const tonkeeper = walletsList.find(w => w.appName === "tonkeeper");
+    const target = tonkeeper || walletsList[0];
+
+    if (target) {
+      const universalLink = tonConnector.connect({
+        universalLink: target.universalUrl,
+        bridgeUrl: target.bridgeUrl,
+      });
+      // Open the wallet link
+      if (universalLink) {
+        window.open(universalLink, "_blank");
+      }
+    }
+  }
+}
+// Expose to onclick
+window.toggleWallet = toggleWallet;
+
+async function saveWalletToServer(address) {
+  try {
+    await fetch(API_BASE + "/api/ton/wallet", {
+      method: "POST",
+      headers: { ...AUTH_HEADER, "Content-Type": "application/json" },
+      body: JSON.stringify({ group_id: GROUP_ID, wallet_address: address }),
+    });
+  } catch (e) {
+    console.warn("Failed to save wallet:", e);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// TON Settlement
+// ---------------------------------------------------------------------------
+
+async function getTonPrice() {
+  if (cachedTonPrice) return cachedTonPrice;
+  try {
+    const data = await apiFetch("/api/ton/price");
+    cachedTonPrice = parseFloat(data.price_usd);
+    // Cache for 60s
+    setTimeout(() => { cachedTonPrice = null; }, 60000);
+    return cachedTonPrice;
+  } catch (e) {
+    console.error("Failed to fetch TON price:", e);
+    return null;
+  }
+}
+
+async function settleOnTon(fromId, toId, amountUsd, currency, toName) {
+  if (!tonConnector || !connectedWallet) {
+    showToast("Please connect your wallet first");
+    return;
+  }
+
+  const btn = document.querySelector(`[data-settle-to="${toId}"]`);
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Processing...";
+  }
+
+  try {
+    // 1. Get creditor's wallet
+    const walletData = await apiFetch(
+      "/api/ton/wallet?group_id=" + encodeURIComponent(GROUP_ID) +
+      "&user_id=" + encodeURIComponent(toId)
+    );
+
+    if (!walletData.wallet_address) {
+      showToast(toName + " hasn't connected a wallet yet");
+      return;
+    }
+
+    // 2. Convert amount to TON
+    const tonPrice = await getTonPrice();
+    if (!tonPrice) {
+      showToast("Could not fetch TON price");
+      return;
+    }
+
+    const amountTon = parseFloat(amountUsd) / tonPrice;
+    const nanotons = Math.round(amountTon * 1e9).toString();
+
+    // 3. Build and send the transaction
+    const tx = {
+      validUntil: Math.floor(Date.now() / 1000) + 600, // 10 min
+      messages: [{
+        address: walletData.wallet_address,
+        amount: nanotons,
+        payload: "", // simple TON transfer
+      }],
+    };
+
+    showToast("Confirm in your wallet...");
+
+    const result = await tonConnector.sendTransaction(tx);
+    const txHash = result.boc || "";
+
+    // 4. Verify on backend
+    showToast("Verifying on-chain...");
+
+    const verifyResp = await fetch(API_BASE + "/api/ton/verify", {
+      method: "POST",
+      headers: { ...AUTH_HEADER, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        group_id: parseInt(GROUP_ID),
+        to_user_id: toId,
+        amount: amountUsd,
+        currency: currency,
+        tx_hash: txHash,
+        sender_wallet: connectedWallet.account.address,
+        receiver_wallet: walletData.wallet_address,
+        amount_ton: amountTon.toFixed(9),
+      }),
+    });
+
+    const verifyData = await verifyResp.json();
+
+    if (verifyData.verified) {
+      showToast("Settlement recorded on-chain! ✅");
+      // Refresh balances
+      loadBalances();
+      loadExpenses();
+    } else {
+      // Even if on-chain verification is pending, the tx was sent
+      showToast("Transaction sent! Verification may take a moment.");
+      setTimeout(() => { loadBalances(); loadExpenses(); }, 5000);
+    }
+  } catch (e) {
+    if (e.message && e.message.includes("User rejected")) {
+      showToast("Transaction cancelled");
+    } else {
+      console.error("Settlement error:", e);
+      showToast("Settlement failed: " + (e.message || "unknown error"));
+    }
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "⛓ Settle on TON";
+    }
+  }
+}
+// Expose for onclick
+window.settleOnTon = settleOnTon;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -67,6 +277,14 @@ async function apiFetch(endpoint) {
   return resp.json();
 }
 
+function showToast(msg) {
+  const el = document.getElementById("toast");
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add("visible");
+  setTimeout(() => el.classList.remove("visible"), 3000);
+}
+
 // ---------------------------------------------------------------------------
 // Tab switching
 // ---------------------------------------------------------------------------
@@ -87,6 +305,7 @@ $$(".tab").forEach((tab) => {
 
 function renderBalances(data) {
   const container = $("#balances-content");
+  lastBalancesData = data;
 
   if (!data.balances.length && !data.settlements.length) {
     container.innerHTML =
@@ -110,16 +329,27 @@ function renderBalances(data) {
     }
   }
 
-  // Settlements section
+  // Settlements section with "Settle on TON" buttons
   if (data.settlements.length) {
     html += '<div class="section-title" style="margin-top:20px">Suggested Settlements</div>';
     for (const s of data.settlements) {
+      const isCurrentUserDebtor = (s.from_id === CURRENT_USER_ID);
       html +=
         '<div class="settlement-card">' +
           '<span class="arrow">→</span>' +
           '<div class="details">' +
             '<div class="names">' + esc(s.from_name) + " pays " + esc(s.to_name) + "</div>" +
             '<div class="amt">' + esc(s.amount) + " " + esc(data.base_currency) + "</div>" +
+            (isCurrentUserDebtor
+              ? '<div class="settle-actions">' +
+                  '<button class="btn btn-ton" data-settle-to="' + s.to_id + '" ' +
+                    'onclick="settleOnTon(' + s.from_id + ',' + s.to_id + ',\'' +
+                    esc(s.amount) + '\',\'' + esc(data.base_currency) + '\',\'' +
+                    esc(s.to_name) + '\')">' +
+                    '⛓ Settle on TON' +
+                  '</button>' +
+                '</div>'
+              : '') +
           "</div>" +
         "</div>";
     }
@@ -141,7 +371,8 @@ function renderExpenses(data) {
 
   for (const e of data.expenses) {
     const isSettlement = e.is_settlement;
-    const desc = isSettlement ? "💸 Settlement" : esc(e.description);
+    const isBlockchain = e.description === "blockchain_settlement";
+    const desc = isBlockchain ? "⛓ On-chain Settlement" : isSettlement ? "💸 Settlement" : esc(e.description);
     const cls = isSettlement ? " settlement" : "";
 
     let conversionNote = "";
@@ -211,7 +442,7 @@ if (!GROUP_ID) {
     "No group context. Please open this dashboard from a group chat."
   );
 } else {
-  // Load both panels in parallel
   loadBalances();
   loadExpenses();
+  initTonConnect();
 }

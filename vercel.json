@@ -12,6 +12,7 @@
   ],
   "rewrites": [
     { "source": "/app.js", "destination": "/webapp/app.js" },
+    { "source": "/tonconnect-manifest.json", "destination": "/webapp/tonconnect-manifest.json" },
     { "source": "/", "destination": "/webapp/index.html" }
   ],
   "crons": [

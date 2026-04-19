@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>SplitBot Dashboard</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://unpkg.com/@tonconnect/sdk@latest/dist/tonconnect-sdk.min.js"></script>
   <style>
     /* ------------------------------------------------------------------ */
     /* Base reset & Telegram theme integration                            */
@@ -158,9 +159,101 @@
       margin: 48px auto;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ------------------------------------------------------------------ */
+    /* TON Connect & Wallet                                               */
+    /* ------------------------------------------------------------------ */
+    .wallet-bar {
+      background: var(--tg-secondary);
+      border-radius: 12px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+    .wallet-bar .wallet-info {
+      font-size: 13px;
+      color: var(--tg-hint);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1;
+    }
+    .wallet-bar .wallet-addr {
+      font-family: monospace;
+      font-size: 12px;
+      color: var(--tg-text);
+    }
+    .btn {
+      display: inline-block;
+      padding: 10px 18px;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      transition: opacity .2s;
+      user-select: none;
+    }
+    .btn:active { opacity: .7; }
+    .btn-primary {
+      background: var(--tg-btn);
+      color: var(--tg-btn-text);
+    }
+    .btn-ton {
+      background: #0098EA;
+      color: #fff;
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 8px;
+    }
+    .btn-ton:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+    .btn-disconnect {
+      background: transparent;
+      color: var(--tg-hint);
+      font-size: 12px;
+      padding: 6px 10px;
+      border: 1px solid var(--tg-hint);
+      border-radius: 8px;
+    }
+    .settlement-card .settle-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #333;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-size: 14px;
+      z-index: 100;
+      opacity: 0;
+      transition: opacity .3s;
+    }
+    .toast.visible { opacity: 1; }
   </style>
 </head>
 <body>
+
+  <!-- Wallet bar -->
+  <div id="wallet-bar" class="wallet-bar" style="display:none">
+    <div class="wallet-info">
+      <span id="wallet-label">Not connected</span><br/>
+      <span id="wallet-addr" class="wallet-addr"></span>
+    </div>
+    <button id="wallet-btn" class="btn btn-primary" onclick="toggleWallet()">Connect Wallet</button>
+  </div>
 
   <!-- Tab bar -->
   <div class="tabs">
@@ -181,6 +274,9 @@
       <div class="loader"></div>
     </div>
   </div>
+
+  <!-- Toast notification -->
+  <div id="toast" class="toast"></div>
 
   <script src="app.js"></script>
 </body>

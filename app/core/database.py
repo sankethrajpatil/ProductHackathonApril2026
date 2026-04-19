@@ -59,6 +59,13 @@ async def _ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     # settlements: scoped to group
     await db.settlements.create_index("group_id")
 
+    # expenses: blockchain tx_hash for dedup (sparse — most docs lack it)
+    await db.expenses.create_index(
+        "blockchain.tx_hash",
+        unique=True,
+        sparse=True,
+    )
+
     logger.info("Database indexes ensured")
 
 

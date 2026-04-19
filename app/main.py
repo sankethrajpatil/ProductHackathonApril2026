@@ -22,6 +22,10 @@ from app.handlers.expense_handler import router as expense_router
 from app.handlers.settlement_handler import router as settlement_router
 from app.handlers.dashboard_handler import router as dashboard_router
 from app.handlers.export_handler import router as export_router
+from app.handlers.stars_handler import router as stars_router
+from app.handlers.photo_handler import router as photo_router
+from app.handlers.analytics_handler import router as analytics_router
+from app.core.analytics_agent import AnalyticsAgent
 from app.services.scheduler import start_scheduler, stop_scheduler
 
 load_dotenv()
@@ -62,6 +66,10 @@ async def main() -> None:
     dp.include_router(group_events_router)
     dp.include_router(dashboard_router)    # /dashboard command
     dp.include_router(export_router)       # /export command
+    dp.include_router(photo_router)        # Receipt OCR handler
+    dp.include_router(analytics_router)    # /analytics Q&A
+    # Analytics agent is NLP Q&A, can be registered as a command or message handler
+    dp.include_router(stars_router)        # /premium, Stars payments
     dp.include_router(settlement_router)   # /pay, /settle commands
     dp.include_router(expense_router)      # NLP catch-all (last)
 
@@ -104,7 +112,7 @@ async def main() -> None:
             logger.info("Running in POLLING mode…")
             await dp.start_polling(
                 bot,
-                allowed_updates=["message", "chat_member"],
+                allowed_updates=["message", "chat_member", "callback_query", "pre_checkout_query"],
             )
     finally:
         stop_scheduler()

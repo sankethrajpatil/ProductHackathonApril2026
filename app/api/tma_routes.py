@@ -193,16 +193,19 @@ async def get_balances(request: web.Request) -> web.Response:
     user_ids = list(balances.keys())
     users_cursor = db.users.find(
         {"group_id": group_id, "user_id": {"$in": user_ids}},
-        {"user_id": 1, "username": 1, "first_name": 1, "_id": 0},
+        {"user_id": 1, "username": 1, "first_name": 1, "premium_status": 1, "_id": 0},
     )
     user_docs = await users_cursor.to_list(None)
     user_map: dict[int, str] = {}
     for u in user_docs:
         uid = u["user_id"]
-        user_map[uid] = (
+        base = (
             f"@{u['username']}" if u.get("username")
             else u.get("first_name") or str(uid)
         )
+        if u.get("premium_status"):
+            base += " 💎"
+        user_map[uid] = base
 
     # Build response — all Decimals as strings
     balance_list = [
@@ -271,16 +274,19 @@ async def get_expenses(request: web.Request) -> web.Response:
 
     users_cursor = db.users.find(
         {"group_id": group_id, "user_id": {"$in": list(all_user_ids)}},
-        {"user_id": 1, "username": 1, "first_name": 1, "_id": 0},
+        {"user_id": 1, "username": 1, "first_name": 1, "premium_status": 1, "_id": 0},
     )
     user_docs = await users_cursor.to_list(None)
     user_map: dict[int, str] = {}
     for u in user_docs:
         uid = u["user_id"]
-        user_map[uid] = (
+        base = (
             f"@{u['username']}" if u.get("username")
             else u.get("first_name") or str(uid)
         )
+        if u.get("premium_status"):
+            base += " 💎"
+        user_map[uid] = base
 
     expenses = []
     for doc in docs:
@@ -320,6 +326,10 @@ def create_tma_app(bot_token: str, static_path: str | None = None) -> web.Applic
     # API routes
     app.router.add_get("/api/balances", get_balances)
     app.router.add_get("/api/expenses", get_expenses)
+
+    # TON blockchain settlement routes
+    from app.api.ton_routes import create_ton_app
+    app.add_subapp("/api/ton/", create_ton_app())
 
     # Serve the webapp frontend as static files
     if static_path:

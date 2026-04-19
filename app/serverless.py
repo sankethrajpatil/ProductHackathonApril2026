@@ -74,13 +74,19 @@ async def get_bot_dp():
         )
         from app.handlers.dashboard_handler import router as dash_router
         from app.handlers.export_handler import router as export_router
+        from app.handlers.stars_handler import router as stars_router
         from app.handlers.settlement_handler import router as settle_router
         from app.handlers.expense_handler import router as expense_router
+        from app.handlers.photo_handler import router as photo_router
+        from app.handlers.analytics_handler import router as analytics_router
         from app.core.middlewares import AntiSpamMiddleware, ThrottleMiddleware
 
         _dp.include_router(ge_router)
         _dp.include_router(dash_router)
         _dp.include_router(export_router)
+        _dp.include_router(photo_router)
+        _dp.include_router(analytics_router)
+        _dp.include_router(stars_router)
         _dp.include_router(settle_router)
         _dp.include_router(expense_router)
 
@@ -102,20 +108,26 @@ async def get_bot():
 # ---------------------------------------------------------------------------
 
 async def resolve_user_names(group_id: int, user_ids: list[int]) -> dict[int, str]:
-    """Map user_ids → display names from the users collection."""
+    """Map user_ids → display names from the users collection.
+
+    Premium users get a 💎 badge appended to their name.
+    """
     from app.core.database import get_db
 
     db = get_db()
     cursor = db.users.find(
         {"group_id": group_id, "user_id": {"$in": user_ids}},
-        {"user_id": 1, "username": 1, "first_name": 1, "_id": 0},
+        {"user_id": 1, "username": 1, "first_name": 1, "premium_status": 1, "_id": 0},
     )
     docs = await cursor.to_list(None)
     names: dict[int, str] = {}
     for u in docs:
         uid = u["user_id"]
-        names[uid] = (
+        base = (
             f"@{u['username']}" if u.get("username")
             else u.get("first_name") or str(uid)
         )
+        if u.get("premium_status"):
+            base += " 💎"
+        names[uid] = base
     return names

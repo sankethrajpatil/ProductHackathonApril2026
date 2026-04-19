@@ -15,9 +15,66 @@ const API_BASE = window.__SPLITBOT_API_BASE || "";
 const startParam = tg.initDataUnsafe?.start_param || "";
 const GROUP_ID = startParam || new URLSearchParams(window.location.search).get("group_id") || "";
 const AUTH_HEADER = tg.initData ? { Authorization: "tma " + tg.initData } : {};
+const DEMO_MODE = new URLSearchParams(window.location.search).get("demo") === "1" || !GROUP_ID || !tg.initData;
 
 // Current user from Telegram
 const CURRENT_USER_ID = tg.initDataUnsafe?.user?.id || null;
+
+const DEMO_BALANCES_DATA = {
+  group_id: 999001,
+  base_currency: "USD",
+  balances: [
+    { user_id: 101, display_name: "@alice", net_balance: "210.00" },
+    { user_id: 102, display_name: "@bob", net_balance: "-130.00" },
+    { user_id: 103, display_name: "@charlie", net_balance: "-80.00" },
+  ],
+  settlements: [
+    { from_id: 102, from_name: "@bob", to_id: 101, to_name: "@alice", amount: "130.00" },
+    { from_id: 103, from_name: "@charlie", to_id: 101, to_name: "@alice", amount: "80.00" },
+  ],
+};
+
+const DEMO_EXPENSES_DATA = {
+  group_id: 999001,
+  expenses: [
+    {
+      payer_id: 101,
+      payer_name: "@alice",
+      total_amount: "240.00",
+      original_amount: "240.00",
+      currency: "USD",
+      original_currency: "USD",
+      description: "Dinner at Pasta House",
+      is_settlement: false,
+      created_at: "2026-04-19T17:00:00Z",
+      split_count: 3,
+    },
+    {
+      payer_id: 102,
+      payer_name: "@bob",
+      total_amount: "90.00",
+      original_amount: "90.00",
+      currency: "USD",
+      original_currency: "USD",
+      description: "Cab to venue",
+      is_settlement: false,
+      created_at: "2026-04-19T15:45:00Z",
+      split_count: 3,
+    },
+    {
+      payer_id: 103,
+      payer_name: "@charlie",
+      total_amount: "60.00",
+      original_amount: "60.00",
+      currency: "USD",
+      original_currency: "USD",
+      description: "Snacks",
+      is_settlement: false,
+      created_at: "2026-04-19T14:30:00Z",
+      split_count: 3,
+    },
+  ],
+};
 
 // ---------------------------------------------------------------------------
 // TON Connect
@@ -410,6 +467,10 @@ function showError(container, message) {
 
 async function loadBalances() {
   const container = $("#balances-content");
+  if (DEMO_MODE) {
+    renderBalances(DEMO_BALANCES_DATA);
+    return;
+  }
   try {
     const data = await apiFetch("/api/balances?group_id=" + encodeURIComponent(GROUP_ID));
     renderBalances(data);
@@ -420,6 +481,10 @@ async function loadBalances() {
 
 async function loadExpenses() {
   const container = $("#expenses-content");
+  if (DEMO_MODE) {
+    renderExpenses(DEMO_EXPENSES_DATA);
+    return;
+  }
   try {
     const data = await apiFetch("/api/expenses?group_id=" + encodeURIComponent(GROUP_ID));
     renderExpenses(data);
@@ -432,17 +497,11 @@ async function loadExpenses() {
 // Bootstrap
 // ---------------------------------------------------------------------------
 
-if (!GROUP_ID) {
-  showError(
-    $("#balances-content"),
-    "No group context. Please open this dashboard from a group chat."
-  );
-  showError(
-    $("#expenses-content"),
-    "No group context. Please open this dashboard from a group chat."
-  );
+loadBalances();
+loadExpenses();
+
+if (DEMO_MODE) {
+  showToast("Demo mode: showing sample balances and expenses");
 } else {
-  loadBalances();
-  loadExpenses();
   initTonConnect();
 }

@@ -24,13 +24,13 @@ const DEMO_BALANCES_DATA = {
   group_id: 999001,
   base_currency: "USD",
   balances: [
-    { user_id: 101, display_name: "@alice", net_balance: "210.00" },
-    { user_id: 102, display_name: "@bob", net_balance: "-130.00" },
-    { user_id: 103, display_name: "@charlie", net_balance: "-80.00" },
+    { user_id: 101, display_name: "Sanketh", net_balance: "80.00" },
+    { user_id: 102, display_name: "Pragathi", net_balance: "-35.00" },
+    { user_id: 103, display_name: "Deandra", net_balance: "-45.00" },
   ],
   settlements: [
-    { from_id: 102, from_name: "@bob", to_id: 101, to_name: "@alice", amount: "130.00" },
-    { from_id: 103, from_name: "@charlie", to_id: 101, to_name: "@alice", amount: "80.00" },
+    { from_id: 102, from_name: "Pragathi", to_id: 101, to_name: "Sanketh", amount: "35.00" },
+    { from_id: 103, from_name: "Deandra", to_id: 101, to_name: "Sanketh", amount: "45.00" },
   ],
 };
 
@@ -39,19 +39,19 @@ const DEMO_EXPENSES_DATA = {
   expenses: [
     {
       payer_id: 101,
-      payer_name: "@alice",
-      total_amount: "240.00",
-      original_amount: "240.00",
+      payer_name: "Sanketh",
+      total_amount: "60.00",
+      original_amount: "60.00",
       currency: "USD",
       original_currency: "USD",
-      description: "Dinner at Pasta House",
+      description: "Dinner",
       is_settlement: false,
-      created_at: "2026-04-19T17:00:00Z",
+      created_at: "2026-04-19T20:30:00Z",
       split_count: 3,
     },
     {
       payer_id: 102,
-      payer_name: "@bob",
+      payer_name: "Pragathi",
       total_amount: "90.00",
       original_amount: "90.00",
       currency: "USD",
@@ -63,7 +63,7 @@ const DEMO_EXPENSES_DATA = {
     },
     {
       payer_id: 103,
-      payer_name: "@charlie",
+      payer_name: "Deandra",
       total_amount: "60.00",
       original_amount: "60.00",
       currency: "USD",

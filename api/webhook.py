@@ -1,41 +1,49 @@
+from fastapi import FastAPI, Request, Response
+import os, hmac, json, logging
+from app.serverless import get_bot_dp
 
-"""
-Vercel-compatible webhook handler for Telegram updates.
-Validates the X-Telegram-Bot-Api-Secret-Token header, logs incoming updates, and feeds them to aiogram Dispatcher.
-"""
+app = FastAPI()
+logger = logging.getLogger("webhook")
 
+@app.post("/")
+async def telegram_webhook(request: Request):
+    secret = os.getenv("TELEGRAM_WEBHOOK_SECRET", "")
+    header_secret = request.headers.get("x-telegram-bot-api-secret-token", "")
+
+    if secret and not hmac.compare_digest(header_secret, secret):
+        return Response("forbidden", status_code=403)
+
+    body = await request.body()
+import os
 import hmac
 import json
 import logging
-import os
+from fastapi import FastAPI, Request, Response
 
 from app.serverless import run_async, get_bot_dp
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("webhook")
+app = FastAPI()
 
-def handler(request, response):
-    # --- Validate secret token ---
+@app.post("/api/webhook")
+async def telegram_webhook(request: Request):
     secret = os.getenv("TELEGRAM_WEBHOOK_SECRET", "")
     header_secret = request.headers.get("x-telegram-bot-api-secret-token", "")
     if secret and not hmac.compare_digest(header_secret, secret):
-        response.status_code = 403
-        return "forbidden"
+        return Response(content="forbidden", status_code=403)
 
-    # --- Log incoming update ---
+    body = await request.body()
     try:
-        logger.info("Received update: %s", request.body.decode("utf-8"))
+        logger.info("Received update: %s", body.decode("utf-8"))
     except Exception:
         logger.warning("Could not decode request body for logging.")
 
-    # --- Parse and process update ---
     try:
-        body = request.body
-        run_async(process_update(body))
+        await process_update(body)
     except Exception as e:
         logger.exception("Failed to process webhook update: %s", e)
 
-    response.status_code = 200
-    return "ok"
+    return Response(content="ok", status_code=200)
 
 async def process_update(body: bytes):
     from aiogram.types import Update

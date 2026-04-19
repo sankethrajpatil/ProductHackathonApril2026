@@ -84,6 +84,17 @@ let tonConnector = null;
 let connectedWallet = null;
 let cachedTonPrice = null;
 let lastBalancesData = null;
+let lastExpensesData = null;
+let selectedStreakDays = 7;
+let financeTipIndex = 0;
+
+const DUMMY_FINANCE_TIPS = [
+  "Start with the 50/30/20 rule: 50% needs, 30% wants, 20% savings.",
+  "Track every shared expense right away to avoid end-of-month confusion.",
+  "Build an emergency fund goal equal to 3-6 months of fixed expenses.",
+  "Pay high-interest debt first, even while making minimum payments elsewhere.",
+  "Review subscriptions monthly; small recurring cuts improve cash flow quickly.",
+];
 
 // TON Connect manifest — hosted alongside the app
 const TON_MANIFEST_URL = (window.location.origin || API_BASE) + "/tonconnect-manifest.json";
@@ -342,6 +353,23 @@ function showToast(msg) {
   setTimeout(() => el.classList.remove("visible"), 3000);
 }
 
+function addDummyFinanceReply(questionText) {
+  const chatLog = $("#finance-chat-log");
+  if (!chatLog) return;
+
+  if (questionText) {
+    chatLog.innerHTML +=
+      '<div class="chat-bubble user"><b>You:</b> ' + esc(questionText) + "</div>";
+  }
+
+  const tip = DUMMY_FINANCE_TIPS[financeTipIndex % DUMMY_FINANCE_TIPS.length];
+  financeTipIndex += 1;
+  chatLog.innerHTML +=
+    '<div class="chat-bubble bot"><b>Finance Coach:</b> ' + esc(tip) + "</div>";
+
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+
 // ---------------------------------------------------------------------------
 // Tab switching
 // ---------------------------------------------------------------------------
@@ -417,6 +445,7 @@ function renderBalances(data) {
 
 function renderExpenses(data) {
   const container = $("#expenses-content");
+  lastExpensesData = data;
 
   if (!data.expenses.length) {
     container.innerHTML =
@@ -456,6 +485,75 @@ function renderExpenses(data) {
   container.innerHTML = html;
 }
 
+function renderInsights() {
+  const container = $("#insights-content");
+  if (!container) return;
+
+  if (!lastBalancesData || !lastExpensesData) {
+    container.innerHTML = '<div class="loader"></div>';
+    return;
+  }
+
+  const expenses = (lastExpensesData.expenses || []).filter((e) => !e.is_settlement);
+  const totalSpend = expenses.reduce((sum, e) => sum + (parseFloat(e.total_amount) || 0), 0);
+  const avgSpend = expenses.length ? totalSpend / expenses.length : 0;
+
+  const payerTotals = {};
+  for (const e of expenses) {
+    const key = e.payer_name || "Unknown";
+    payerTotals[key] = (payerTotals[key] || 0) + (parseFloat(e.total_amount) || 0);
+  }
+  const topSpender = Object.entries(payerTotals).sort((a, b) => b[1] - a[1])[0];
+
+  container.innerHTML =
+    '<div class="section-title">Group Analytics</div>' +
+    '<div class="insight-grid">' +
+      '<div class="insight-card"><div class="insight-label">Total Spend</div><div class="insight-value">' +
+        totalSpend.toFixed(2) + " " + esc(lastBalancesData.base_currency || "USD") +
+      "</div></div>" +
+      '<div class="insight-card"><div class="insight-label">Avg Expense</div><div class="insight-value">' +
+        avgSpend.toFixed(2) + " " + esc(lastBalancesData.base_currency || "USD") +
+      "</div></div>" +
+      '<div class="insight-card"><div class="insight-label">Top Spender</div><div class="insight-value">' +
+        esc(topSpender ? topSpender[0] : "N/A") +
+      "</div></div>" +
+      '<div class="insight-card"><div class="insight-label">Tracked Transactions</div><div class="insight-value">' +
+        String(expenses.length) +
+      "</div></div>" +
+    "</div>" +
+    '<div class="section-title">Expense Streaks</div>' +
+    '<div class="streak-row">' +
+      '<button class="btn btn-streak" data-streak-days="3">🔥 3-day streak</button>' +
+      '<button class="btn btn-streak" data-streak-days="7">💪 7-day streak</button>' +
+      '<button class="btn btn-streak" data-streak-days="14">🏆 14-day streak</button>' +
+    "</div>" +
+    '<div class="state-msg" style="padding:8px 0 14px;font-size:13px">Current streak goal: <b>' +
+      String(selectedStreakDays) +
+      " days</b></div>" +
+    '<div class="section-title">Learn More About Finance</div>' +
+    '<div class="finance-chat">' +
+      '<div id="finance-chat-log" class="chat-log">' +
+        '<div class="chat-bubble bot"><b>Finance Coach:</b> Ask me anything about budgeting, debt, or saving. (Demo chatbot)</div>' +
+      "</div>" +
+      '<button id="learn-finance-btn" class="btn btn-primary" style="width:100%">Learn more about finance</button>' +
+    "</div>";
+
+  $$("[data-streak-days]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      selectedStreakDays = Number(btn.dataset.streakDays || "7");
+      showToast("Streak goal set to " + selectedStreakDays + " days");
+      renderInsights();
+    });
+  });
+
+  const learnBtn = $("#learn-finance-btn");
+  if (learnBtn) {
+    learnBtn.addEventListener("click", () => {
+      addDummyFinanceReply("Teach me one practical finance tip.");
+    });
+  }
+}
+
 function showError(container, message) {
   container.innerHTML =
     '<div class="state-msg"><div class="icon">⚠️</div>' + esc(message) + "</div>";
@@ -469,11 +567,13 @@ async function loadBalances() {
   const container = $("#balances-content");
   if (DEMO_MODE) {
     renderBalances(DEMO_BALANCES_DATA);
+    renderInsights();
     return;
   }
   try {
     const data = await apiFetch("/api/balances?group_id=" + encodeURIComponent(GROUP_ID));
     renderBalances(data);
+    renderInsights();
   } catch (err) {
     showError(container, err.message || "Failed to load balances");
   }
@@ -483,11 +583,13 @@ async function loadExpenses() {
   const container = $("#expenses-content");
   if (DEMO_MODE) {
     renderExpenses(DEMO_EXPENSES_DATA);
+    renderInsights();
     return;
   }
   try {
     const data = await apiFetch("/api/expenses?group_id=" + encodeURIComponent(GROUP_ID));
     renderExpenses(data);
+    renderInsights();
   } catch (err) {
     showError(container, err.message || "Failed to load expenses");
   }

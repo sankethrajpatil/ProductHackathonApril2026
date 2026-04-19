@@ -66,7 +66,17 @@ async def on_potential_expense(message: Message) -> None:
     # --- NLP extraction ----------------------------------------------------
     parsed = await parse_expense(text)
     if parsed is None:
-        return  # LLM decided it's not an expense, or call failed
+        logger.warning(
+            "Expense-like message could not be parsed. chat_id=%s user_id=%s text=%r",
+            message.chat.id,
+            payer.id,
+            text,
+        )
+        await message.reply(
+            "⚠️ I detected an expense message but couldn't parse it right now.\n"
+            "Please try a clearer format like: `spent 500 USD with everyone for dinner`."
+        )
+        return
 
     logger.info("NLP parsed expense from %s: %s", payer.id, parsed)
 

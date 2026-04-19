@@ -1,15 +1,18 @@
+
 from typing import Any
-# --- STUB for add_expense_from_ocr to satisfy mypy ---
-async def add_expense_from_ocr(message: Any, result: Any) -> None:
-    pass
 import logging
 from decimal import Decimal, ROUND_HALF_UP
 from typing import TypedDict
-
 from app.core.database import get_group_user_ids, get_group_base_currency
 from app.core.nlp_service import ParsedExpense
 from app.services.currency_converter import convert_amount
 
+# --- STUB for add_expense_from_ocr to satisfy mypy ---
+async def add_expense_from_ocr(message: Any, result: Any) -> None:
+    pass
+
+# ...existing code...
+# ...existing code...
 logger = logging.getLogger(__name__)
 
 

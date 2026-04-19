@@ -1,4 +1,13 @@
+
 from typing import Any
+import logging
+from decimal import Decimal
+from apscheduler.schedulers.asyncio import AsyncIOScheduler  # type: ignore
+from apscheduler.triggers.cron import CronTrigger  # type: ignore
+from aiogram import Bot
+from app.core.database import get_db
+from app.services.debt_calculator import compute_group_balances, compute_settlements
+
 """APScheduler-powered background jobs.
 
 Currently provides a weekly balance-summary reminder that loops through all
@@ -6,16 +15,8 @@ active groups, runs the debt-simplification algorithm, and sends an
 automated message to groups with outstanding balances.
 """
 
-import logging
-from decimal import Decimal
-
-from apscheduler.schedulers.asyncio import AsyncIOScheduler  # type: ignore
-from apscheduler.triggers.cron import CronTrigger  # type: ignore
-from aiogram import Bot
-
-from app.core.database import get_db
-from app.services.debt_calculator import compute_group_balances, compute_settlements
-
+# ...existing code...
+# ...existing code...
 logger = logging.getLogger(__name__)
 
 _scheduler: AsyncIOScheduler | None = None

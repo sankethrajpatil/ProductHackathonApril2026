@@ -1,3 +1,9 @@
+
+import asyncio
+from typing import Any, Coroutine, Tuple
+import logging
+import os
+
 """Shared initialisation helpers for Vercel serverless functions.
 
 Provides a persistent event loop and cached singletons (DB connection,
@@ -5,25 +11,14 @@ aiogram Bot, Dispatcher) so that warm-start Lambda invocations skip
 the cold-start setup cost.
 """
 
-import asyncio
-from typing import Any, Coroutine
-import logging
-import os
-
 logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# Persistent event loop — motor & aiohttp sessions bind to it and survive
-# across warm-start invocations of the same Lambda container.
-# ---------------------------------------------------------------------------
 _loop = asyncio.new_event_loop()
 
 
-def run_async(coro: 'Coroutine[Any, Any, Any]') -> Any:
+def run_async(coro: Coroutine[Any, Any, Any]) -> Any:
     """Execute an async coroutine on the persistent event loop."""
-    import asyncio
-    from typing import Any, Coroutine
     return _loop.run_until_complete(coro)
+
 
 
 # ---------------------------------------------------------------------------
@@ -51,7 +46,7 @@ _bot = None
 _dp = None
 
 
-from typing import Any, Tuple
+# ...existing code...
 async def get_bot_dp() -> Tuple[Any, Any]:
     """Return (Bot, Dispatcher), created once and cached for warm starts."""
     global _bot, _dp
@@ -101,7 +96,7 @@ async def get_bot_dp() -> Tuple[Any, Any]:
     return _bot, _dp
 
 
-from typing import Any
+# ...existing code...
 async def get_bot() -> Any:
     """Return the Bot instance only (creates Dispatcher as a side-effect)."""
     bot, _ = await get_bot_dp()

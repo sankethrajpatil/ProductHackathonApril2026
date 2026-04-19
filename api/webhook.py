@@ -1,55 +1,45 @@
-"""POST /api/webhook — receive Telegram updates via webhook.
 
-Validates the ``X-Telegram-Bot-Api-Secret-Token`` header, then feeds the
-update to the aiogram Dispatcher.
+"""
+Vercel-compatible webhook handler for Telegram updates.
+Validates the X-Telegram-Bot-Api-Secret-Token header, logs incoming updates, and feeds them to aiogram Dispatcher.
 """
 
 import hmac
 import json
 import logging
 import os
-from http.server import BaseHTTPRequestHandler
 
 from app.serverless import run_async, get_bot_dp
 
 logger = logging.getLogger(__name__)
 
+def handler(request, response):
+    # --- Validate secret token ---
+    secret = os.getenv("TELEGRAM_WEBHOOK_SECRET", "")
+    header_secret = request.headers.get("x-telegram-bot-api-secret-token", "")
+    if secret and not hmac.compare_digest(header_secret, secret):
+        response.status_code = 403
+        return "forbidden"
 
-class handler(BaseHTTPRequestHandler):
-    def do_POST(self):
-        # --- Validate secret token ----------------------------------------
-        secret = os.getenv("TELEGRAM_WEBHOOK_SECRET", "")
-        if secret:
-            header_secret = self.headers.get(
-                "X-Telegram-Bot-Api-Secret-Token", "",
-            )
-            if not hmac.compare_digest(header_secret, secret):
-                self.send_response(403)
-                self.end_headers()
-                return
+    # --- Log incoming update ---
+    try:
+        logger.info("Received update: %s", request.body.decode("utf-8"))
+    except Exception:
+        logger.warning("Could not decode request body for logging.")
 
-        # --- Read body & process ------------------------------------------
-        content_length = int(self.headers.get("Content-Length", 0))
-        body = self.rfile.read(content_length)
+    # --- Parse and process update ---
+    try:
+        body = request.body
+        run_async(process_update(body))
+    except Exception as e:
+        logger.exception("Failed to process webhook update: %s", e)
 
-        try:
-            run_async(self._process(body))
-        except Exception:
-            logger.exception("Failed to process webhook update")
+    response.status_code = 200
+    return "ok"
 
-        self.send_response(200)
-        self.send_header("Content-Type", "text/plain")
-        self.end_headers()
-        self.wfile.write(b"ok")
-
-    @staticmethod
-    async def _process(body: bytes):
-        from aiogram.types import Update
-
-        bot, dp = await get_bot_dp()
-        raw = json.loads(body)
-        update = Update.model_validate(raw, context={"bot": bot})
-        await dp.feed_update(bot=bot, update=update)
-
-    def log_message(self, format, *args):
-        logger.debug(format, *args)
+async def process_update(body: bytes):
+    from aiogram.types import Update
+    bot, dp = await get_bot_dp()
+    raw = json.loads(body)
+    update = Update.model_validate(raw, context={"bot": bot})
+    await dp.feed_update(bot=bot, update=update)

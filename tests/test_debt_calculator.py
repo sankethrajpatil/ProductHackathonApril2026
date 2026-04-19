@@ -1,4 +1,3 @@
-import pytest
 from decimal import Decimal
 from app.services.debt_calculator import compute_settlements
 

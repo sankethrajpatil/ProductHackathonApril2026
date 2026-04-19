@@ -1,7 +1,7 @@
 """
 Analytics Handler — aiogram router for conversational analytics Q&A.
 """
-from aiogram import Router, F
+from aiogram import Router
 from aiogram.types import Message
 from aiogram.filters import Command
 from app.core.analytics_agent import AnalyticsAgent

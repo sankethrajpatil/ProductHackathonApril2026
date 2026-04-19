@@ -47,7 +47,8 @@ class OCRService:
             raise OCRConfidenceError(f"Failed to extract: {e}")
 
     def _parse_json(self, text: str) -> dict:
-        import json, re
+        import json
+        import re
         m = re.search(r"\{.*\}", text, re.DOTALL)
         if not m:
             raise ValueError("No JSON found in LLM output")

@@ -9,12 +9,9 @@ When no webhook URL is configured the server still starts (for the TMA API)
 and the caller falls back to long-polling.
 """
 
-import hashlib
 import hmac
 import logging
-import os
 import pathlib
-from typing import Any
 
 from aiohttp import web
 from aiogram import Bot, Dispatcher

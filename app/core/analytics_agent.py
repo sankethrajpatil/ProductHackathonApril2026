@@ -2,7 +2,6 @@
 Conversational Analytics Agent — secure, read-only Q&A over group expenses.
 """
 from typing import Any, Dict
-from decimal import Decimal
 from app.core.database import get_db
 import os
 import httpx

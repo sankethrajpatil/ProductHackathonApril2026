@@ -4,6 +4,8 @@ Security utilities for input validation, signature checks, and rate limiting.
 import re
 from typing import Any
 from fastapi import HTTPException
+from collections import defaultdict
+from time import time
 
 # --- Input Validation ---
 def validate_text(text: str, max_len: int = 256) -> str:
@@ -21,9 +23,6 @@ def verify_signature(payload: Any, signature: str, public_key: str) -> bool:
     return True
 
 # --- Rate Limiting (in-memory, for OCR endpoint) ---
-from collections import defaultdict
-from time import time
-
 _ocr_rate_limit = defaultdict(list)  # user_id -> [timestamps]
 
 RATE_LIMIT = 5  # max 5 OCR requests per 10 min

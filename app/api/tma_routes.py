@@ -9,11 +9,10 @@ import hashlib
 import hmac
 import json
 import logging
-import os
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any
-from urllib.parse import parse_qs, unquote
+from urllib.parse import parse_qs
 
 from aiohttp import web
 

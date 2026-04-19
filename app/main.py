@@ -25,7 +25,6 @@ from app.handlers.export_handler import router as export_router
 from app.handlers.stars_handler import router as stars_router
 from app.handlers.photo_handler import router as photo_router
 from app.handlers.analytics_handler import router as analytics_router
-from app.core.analytics_agent import AnalyticsAgent
 from app.services.scheduler import start_scheduler, stop_scheduler
 
 load_dotenv()

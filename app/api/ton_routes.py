@@ -7,22 +7,14 @@ Provides endpoints for:
 - POST /api/ton/verify     — verify an on-chain tx and record settlement
 """
 
-import hashlib
-import hmac
-import json
 import logging
-import os
 from decimal import Decimal, ROUND_HALF_UP
-from typing import Any
-from urllib.parse import parse_qs, unquote
 
 from aiohttp import web
 
 from app.core.database import get_db
 from app.services.blockchain import (
     get_ton_price_usd,
-    fiat_to_ton,
-    ton_to_nanoton,
     verify_ton_transaction,
     record_blockchain_settlement,
     get_user_wallet,

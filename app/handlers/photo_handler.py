@@ -3,8 +3,6 @@ Photo Handler — aiogram router for receipt OCR via photo/document upload.
 """
 from aiogram import Router, F
 from aiogram.types import Message, ContentType, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
-from aiogram.filters import Command
-from decimal import Decimal
 from app.services.ocr_service import OCRService, OCRConfidenceError
 from app.services.expense_manager import add_expense_from_ocr
 from app.core.security import check_ocr_rate_limit, validate_text

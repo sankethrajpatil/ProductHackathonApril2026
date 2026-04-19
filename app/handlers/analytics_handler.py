@@ -11,7 +11,7 @@ router = Router()
 agent = AnalyticsAgent()
 
 @router.message(Command("analytics"))
-async def analytics_command(message: Message):
+async def analytics_command(message: Message) -> None:
     from app.serverless import ensure_db
     await ensure_db()
     # Extract question from command or prompt user

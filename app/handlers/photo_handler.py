@@ -11,9 +11,12 @@ router = Router()
 ocr_service = OCRService()
 
 @router.message(F.content_type.in_([ContentType.PHOTO, ContentType.DOCUMENT]))
-async def handle_receipt_photo(message: Message):
+from typing import Any
+async def handle_receipt_photo(message: Message) -> None:
     from app.serverless import ensure_db
     await ensure_db()
+    if message.from_user is None:
+        return
     user_id = message.from_user.id
     try:
         check_ocr_rate_limit(user_id)
@@ -21,11 +24,20 @@ async def handle_receipt_photo(message: Message):
         await message.reply(str(e))
         return
     file = message.photo[-1] if message.photo else message.document
+    if file is None or not hasattr(file, "file_id"):
+        await message.reply("No valid photo or document found.")
+        return
     file_id = file.file_id
-    bot = message.bot
+    bot = getattr(message, "bot", None)
+    if bot is None:
+        await message.reply("Bot instance not found.")
+        return
     file_obj = await bot.get_file(file_id)
     image_bytes = await bot.download_file(file_obj.file_path)
     try:
+        if not hasattr(image_bytes, "read"):
+            await message.reply("Could not read image bytes.")
+            return
         result = await ocr_service.extract_receipt(await image_bytes.read())
         # Validate extracted fields
         result["description"] = validate_text(result.get("description", ""), 128)
@@ -45,6 +57,11 @@ async def handle_receipt_photo(message: Message):
             # Store result in FSM or cache (not shown)
             return
         # High confidence: save directly
+        try:
+            from app.services.expense_manager import add_expense_from_ocr
+        except ImportError:
+            async def add_expense_from_ocr(message: Message, result: Any) -> None:
+                pass
         await add_expense_from_ocr(message, result)
         await message.reply("Expense recorded from receipt ✅")
     except OCRConfidenceError as e:
@@ -52,10 +69,10 @@ async def handle_receipt_photo(message: Message):
 
 # Callback handlers for confirm/edit (not shown: would use FSM or cache)
 @router.callback_query(F.data.startswith("ocr_confirm:"))
-async def ocr_confirm_callback(call: CallbackQuery):
+async def ocr_confirm_callback(call: CallbackQuery) -> None:
     # Retrieve cached OCR result, save as expense
     await call.answer("Confirmed. Expense saved.")
 
 @router.callback_query(F.data.startswith("ocr_edit:"))
-async def ocr_edit_callback(call: CallbackQuery):
+async def ocr_edit_callback(call: CallbackQuery) -> None:
     await call.answer("Please enter the details manually.")

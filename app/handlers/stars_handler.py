@@ -77,7 +77,8 @@ async def on_premium_command(message: Message) -> None:
 
 
 @router.callback_query(F.data == "buy_premium")
-async def on_buy_premium(callback) -> None:
+from aiogram.types import CallbackQuery
+async def on_buy_premium(callback: CallbackQuery) -> None:
     """Send a Stars invoice when the user clicks 'Buy Premium'."""
     if callback.from_user is None:
         await callback.answer()

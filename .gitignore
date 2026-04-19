@@ -1,0 +1,19 @@
+# Vercel
+.vercel
+
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# IDE
+.idea/
+.vscode/
+
+# Misc
+reddit_scrape_output.json

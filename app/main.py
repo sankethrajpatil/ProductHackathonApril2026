@@ -64,6 +64,8 @@ async def main() -> None:
 
     # Register routers (order matters: commands before NLP catch-all)
     dp.include_router(group_events_router)
+    from app.handlers.start_handler import router as start_router
+    dp.include_router(start_router)        # /start command
     dp.include_router(dashboard_router)    # /dashboard command
     dp.include_router(export_router)       # /export command
     dp.include_router(photo_router)        # Receipt OCR handler

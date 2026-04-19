@@ -6,6 +6,7 @@ the cold-start setup cost.
 """
 
 import asyncio
+from typing import Any, Coroutine
 import logging
 import os
 
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 _loop = asyncio.new_event_loop()
 
 
-def run_async(coro):
+def run_async(coro: 'Coroutine[Any, Any, Any]') -> Any:
     """Execute an async coroutine on the persistent event loop."""
     import asyncio
     from typing import Any, Coroutine

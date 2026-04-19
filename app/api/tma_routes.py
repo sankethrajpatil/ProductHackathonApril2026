@@ -119,7 +119,9 @@ async def auth_middleware(
     """Validate the Authorization header on all /api/* routes."""
     # Allow CORS preflight and static assets through
     if request.method == "OPTIONS" or not request.path.startswith("/api/"):
-        return await handler(request)
+        resp = await handler(request)
+        assert isinstance(resp, web.StreamResponse)
+        return resp
 
     auth_header = request.headers.get("Authorization", "")
     if not auth_header.startswith("tma "):
@@ -141,7 +143,9 @@ async def auth_middleware(
     # Attach validated user info to the request for downstream handlers
     request["tma_user"] = auth_info["user"]
     request["tma_auth"] = auth_info
-    return await handler(request)
+    resp = await handler(request)
+    assert isinstance(resp, web.StreamResponse)
+    return resp
 
 
 # ---------------------------------------------------------------------------

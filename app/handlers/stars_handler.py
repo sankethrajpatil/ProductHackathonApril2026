@@ -17,6 +17,7 @@ from aiogram.types import (
     PreCheckoutQuery,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
+    CallbackQuery,
 )
 
 from app.core.database import get_db
@@ -77,24 +78,24 @@ async def on_premium_command(message: Message) -> None:
 
 
 @router.callback_query(F.data == "buy_premium")
-from aiogram.types import CallbackQuery
 async def on_buy_premium(callback: CallbackQuery) -> None:
     """Send a Stars invoice when the user clicks 'Buy Premium'."""
     if callback.from_user is None:
         await callback.answer()
         return
 
-    await callback.message.answer_invoice(
-        title="SplitBot Premium",
-        description=(
-            "Unlock advanced analytics, PDF exports, unlimited groups, "
-            "custom reminders, and priority support."
-        ),
-        payload=f"premium_{callback.message.chat.id}_{callback.from_user.id}",
-        currency="XTR",  # Telegram Stars currency code
-        prices=[LabeledPrice(label="SplitBot Premium", amount=_PREMIUM_PRICE_STARS)],
-    )
-    await callback.answer()
+    if callback.message is not None:
+        await callback.message.answer_invoice(
+            title="SplitBot Premium",
+            description=(
+                "Unlock advanced analytics, PDF exports, unlimited groups, "
+                "custom reminders, and priority support."
+            ),
+            payload=f"premium_{callback.message.chat.id}_{callback.from_user.id}",
+            currency="XTR",  # Telegram Stars currency code
+            prices=[LabeledPrice(label="SplitBot Premium", amount=_PREMIUM_PRICE_STARS)],
+        )
+        await callback.answer()
 
 
 @router.pre_checkout_query()
@@ -106,7 +107,7 @@ async def on_pre_checkout(pre_checkout_query: PreCheckoutQuery) -> None:
 @router.message(F.successful_payment)
 async def on_successful_payment(message: Message) -> None:
     """Handle successful Stars payment — activate premium."""
-    if message.from_user is None or message.successful_payment is None:
+    if message.from_user is None or message.successful_payment is None or message.chat is None:
         return
 
     payment = message.successful_payment

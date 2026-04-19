@@ -69,7 +69,7 @@ async def verify_ton_transaction(
     expected_sender: str,
     expected_receiver: str,
     expected_amount_ton: Decimal,
-) -> dict:
+) -> dict[str, bool | str | int | Decimal | None]:
     """Verify a TON transaction on-chain via Toncenter.
 
     Returns a dict with verification result:
@@ -228,7 +228,10 @@ async def get_user_wallet(group_id: int, user_id: int) -> str | None:
         {"wallet_address": 1, "_id": 0},
     )
     if doc:
-        return doc.get("wallet_address")
+        wallet = doc.get("wallet_address")
+        if isinstance(wallet, str) or wallet is None:
+            return wallet
+        return str(wallet)
     return None
 
 

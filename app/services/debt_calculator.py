@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 def compute_settlements(
     balances: dict[int, Decimal],
-) -> list[dict[str, int | Decimal]]:
+) -> list[dict[str, str]]:
     """Given net balances (sum == 0), return the minimum settlement list.
 
     balances: {user_id: net_balance}  positive = creditor, negative = debtor
@@ -22,7 +22,7 @@ def compute_settlements(
     """
     # Work on a mutable copy; filter zeros
     b = {uid: bal for uid, bal in balances.items() if bal != Decimal("0")}
-    settlements: list[dict[str, int | Decimal]] = []
+    settlements: list[dict[str, str]] = []
 
     while b:
         v_max = max(b, key=b.get)  # type: ignore[arg-type]
@@ -30,9 +30,9 @@ def compute_settlements(
         settlement = min(b[v_max], abs(b[v_min]))
 
         settlements.append({
-            "from": v_min,
-            "to": v_max,
-            "amount": settlement,
+            "from": str(v_min),
+            "to": str(v_max),
+            "amount": str(settlement),
         })
 
         b[v_max] -= settlement

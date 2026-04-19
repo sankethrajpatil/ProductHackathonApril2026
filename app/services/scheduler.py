@@ -1,3 +1,4 @@
+from typing import Any
 """APScheduler-powered background jobs.
 
 Currently provides a weekly balance-summary reminder that loops through all
@@ -8,8 +9,8 @@ automated message to groups with outstanding balances.
 import logging
 from decimal import Decimal
 
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.cron import CronTrigger
+from apscheduler.schedulers.asyncio import AsyncIOScheduler  # type: ignore
+from apscheduler.triggers.cron import CronTrigger  # type: ignore
 from aiogram import Bot
 
 from app.core.database import get_db
@@ -29,11 +30,11 @@ async def _weekly_balance_reminder(bot: Bot) -> None:
     db = get_db()
 
     # Fetch all group_ids that have at least one unsettled expense
-    pipeline = [
+    pipeline: list[dict[str, Any]] = [
         {"$match": {"settled": False}},
         {"$group": {"_id": "$group_id"}},
     ]
-    group_ids = [doc["_id"] async for doc in db.expenses.aggregate(pipeline)]
+    group_ids: list[int] = [doc["_id"] async for doc in db.expenses.aggregate(pipeline)]
 
     if not group_ids:
         logger.info("Weekly reminder: no groups with outstanding balances")
@@ -96,9 +97,9 @@ async def _send_group_reminder(bot: Bot, group_id: int) -> None:
 
     lines.append("\n<b>Suggested settlements:</b>")
     for s in settlements:
-        f_name = names.get(s["from"], str(s["from"]))  # type: ignore[arg-type]
-        t_name = names.get(s["to"], str(s["to"]))  # type: ignore[arg-type]
-        lines.append(f"  {f_name} → {t_name}: {s['amount']} {currency}")
+        f_name = names.get(int(s["from"]), str(s["from"]))
+        t_name = names.get(int(s["to"]), str(s["to"]))
+        lines.append(f"  {f_name}  {t_name}: {s['amount']} {currency}")
 
     lines.append("\nUse /pay to record payments or /settle to view details.")
 

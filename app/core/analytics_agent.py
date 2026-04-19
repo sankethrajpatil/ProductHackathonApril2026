@@ -1,15 +1,15 @@
 """
 Conversational Analytics Agent — secure, read-only Q&A over group expenses.
 """
-from typing import Any, Dict
+from typing import Any, Dict, Optional, List, Mapping, Sequence
 from app.core.database import get_db
 import os
 import httpx
 
 class AnalyticsAgent:
-    def __init__(self, api_key: str = None):
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
-        self.model = os.getenv("ANALYTICS_MODEL", "gpt-4o")
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key: str = str(api_key) if api_key is not None else str(os.getenv("OPENAI_API_KEY", ""))
+        self.model: str = str(os.getenv("ANALYTICS_MODEL", "gpt-4o"))
 
     async def answer(self, group_id: int, query: str) -> str:
         """
@@ -32,12 +32,22 @@ class AnalyticsAgent:
                 },
             )
             resp.raise_for_status()
-            return resp.json()["choices"][0]["message"]["content"]
+            data = resp.json()
+            if (
+                isinstance(data, dict)
+                and "choices" in data
+                and isinstance(data["choices"], list)
+                and data["choices"]
+                and "message" in data["choices"][0]
+                and "content" in data["choices"][0]["message"]
+            ):
+                return str(data["choices"][0]["message"]["content"])
+            return ""
 
-    async def _aggregate_data(self, group_id: int) -> Dict[str, Any]:
+    async def _aggregate_data(self, group_id: int) -> List[Dict[str, Any]]:
         db = get_db()
         # Only allow predefined, read-only aggregations
-        pipeline = [
+        pipeline: List[Mapping[str, Any]] = [
             {"$match": {"group_id": group_id}},
             {"$group": {
                 "_id": "$category",  # Assume category field exists

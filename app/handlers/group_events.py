@@ -66,19 +66,20 @@ async def on_new_chat_members(message: Message) -> None:
     group_id = message.chat.id
     await upsert_group(group_id, title=message.chat.title)
 
-    for user in message.new_chat_members:
-        if user.is_bot:
-            continue
-        logger.info(
-            "new_chat_members: %s (%s) in group %s",
-            user.id, user.username, group_id,
-        )
-        await add_user_to_group(
-            group_id=group_id,
-            user_id=user.id,
-            username=user.username,
-            first_name=user.first_name,
-        )
+    if message.new_chat_members is not None:
+        for user in message.new_chat_members:
+            if user.is_bot:
+                continue
+            logger.info(
+                "new_chat_members: %s (%s) in group %s",
+                user.id, user.username, group_id,
+            )
+            await add_user_to_group(
+                group_id=group_id,
+                user_id=user.id,
+                username=user.username,
+                first_name=user.first_name,
+            )
 
 
 @router.message(F.left_chat_member)

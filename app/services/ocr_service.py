@@ -46,10 +46,15 @@ class OCRService:
         except Exception as e:
             raise OCRConfidenceError(f"Failed to extract: {e}")
 
-    def _parse_json(self, text: str) -> dict:
+    def _parse_json(self, text: str) -> Dict[str, Any]:
         import json
         import re
         m = re.search(r"\{.*\}", text, re.DOTALL)
         if not m:
             raise ValueError("No JSON found in LLM output")
-        return json.loads(m.group(0))
+        result = json.loads(m.group(0))
+        if not isinstance(result, dict):
+            raise ValueError("Parsed JSON is not a dict")
+        # Ensure type for mypy
+        return dict(result)
+        raise ValueError("Unreachable")

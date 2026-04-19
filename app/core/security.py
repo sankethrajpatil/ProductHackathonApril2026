@@ -23,12 +23,12 @@ def verify_signature(payload: Any, signature: str, public_key: str) -> bool:
     return True
 
 # --- Rate Limiting (in-memory, for OCR endpoint) ---
-_ocr_rate_limit = defaultdict(list)  # user_id -> [timestamps]
+_ocr_rate_limit: dict[int, list[float]] = defaultdict(list)  # user_id -> [timestamps]
 
 RATE_LIMIT = 5  # max 5 OCR requests per 10 min
 RATE_WINDOW = 600
 
-def check_ocr_rate_limit(user_id: int):
+def check_ocr_rate_limit(user_id: int) -> None:
     now = time()
     window = _ocr_rate_limit[user_id]
     window[:] = [t for t in window if now - t < RATE_WINDOW]

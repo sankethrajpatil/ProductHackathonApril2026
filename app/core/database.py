@@ -2,14 +2,15 @@ import logging
 from datetime import datetime, timezone
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
-_client: AsyncIOMotorClient | None = None
-_db: AsyncIOMotorDatabase | None = None
+_client: Optional[AsyncIOMotorClient[Any]] = None
+_db: Optional[AsyncIOMotorDatabase[Any]] = None
 
 
-async def connect(mongo_uri: str, db_name: str = "splitbot") -> AsyncIOMotorDatabase:
+async def connect(mongo_uri: str, db_name: str = "splitbot") -> AsyncIOMotorDatabase[Any]:
     """Initialise the Motor client and return the database handle."""
     global _client, _db
     _client = AsyncIOMotorClient(mongo_uri)
@@ -29,7 +30,7 @@ async def close() -> None:
         logger.info("MongoDB connection closed")
 
 
-def get_db() -> AsyncIOMotorDatabase:
+def get_db() -> AsyncIOMotorDatabase[Any]:
     """Return the active database handle. Raises if not connected."""
     if _db is None:
         raise RuntimeError("Database not initialised — call connect() first")
@@ -40,7 +41,7 @@ def get_db() -> AsyncIOMotorDatabase:
 # Collection helpers
 # ---------------------------------------------------------------------------
 
-async def _ensure_indexes(db: AsyncIOMotorDatabase) -> None:
+async def _ensure_indexes(db: AsyncIOMotorDatabase[Any]) -> None:
     """Create required indexes on first connect."""
     # groups: one document per Telegram group
     await db.groups.create_index("group_id", unique=True)
@@ -73,10 +74,10 @@ async def _ensure_indexes(db: AsyncIOMotorDatabase) -> None:
 # Group roster operations
 # ---------------------------------------------------------------------------
 
-async def upsert_group(group_id: int, title: str | None = None) -> None:
+async def upsert_group(group_id: int, title: Optional[str] = None) -> None:
     """Ensure a group document exists. Sets defaults on first insert."""
     db = get_db()
-    update: dict = {"$setOnInsert": {
+    update: Dict[str, Any] = {"$setOnInsert": {
         "group_id": group_id,
         "base_currency": "USD",
         "created_at": datetime.now(timezone.utc),
@@ -93,12 +94,12 @@ async def upsert_group(group_id: int, title: str | None = None) -> None:
 async def add_user_to_group(
     group_id: int,
     user_id: int,
-    username: str | None = None,
-    first_name: str | None = None,
+    username: Optional[str] = None,
+    first_name: Optional[str] = None,
 ) -> None:
     """Upsert a user into the group's roster (users collection)."""
     db = get_db()
-    set_fields: dict = {"last_seen": datetime.now(timezone.utc)}
+    set_fields: Dict[str, Any] = {"last_seen": datetime.now(timezone.utc)}
     if username is not None:
         set_fields["username"] = username
     if first_name is not None:
@@ -127,7 +128,7 @@ async def remove_user_from_group(group_id: int, user_id: int) -> None:
     )
 
 
-async def get_group_user_ids(group_id: int) -> list[int]:
+async def get_group_user_ids(group_id: int) -> List[int]:
     """Return active user IDs for a group (the 'everyone' roster)."""
     db = get_db()
     cursor = db.users.find(
@@ -146,11 +147,14 @@ async def get_group_base_currency(group_id: int) -> str:
         {"base_currency": 1, "_id": 0},
     )
     if doc and doc.get("base_currency"):
-        return doc["base_currency"]
+        base = doc["base_currency"]
+        if isinstance(base, str):
+            return base
+        return str(base)
     return "USD"
 
 
-async def resolve_username_to_user_id(group_id: int, username: str) -> int | None:
+async def resolve_username_to_user_id(group_id: int, username: str) -> Optional[int]:
     """Look up a user_id by username within a group."""
     db = get_db()
     doc = await db.users.find_one(

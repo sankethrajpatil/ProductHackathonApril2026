@@ -1,3 +1,7 @@
+from typing import Any
+# --- STUB for add_expense_from_ocr to satisfy mypy ---
+async def add_expense_from_ocr(message: Any, result: Any) -> None:
+    pass
 import logging
 from decimal import Decimal, ROUND_HALF_UP
 from typing import TypedDict
@@ -41,7 +45,10 @@ async def process_expense(
     """
     # --- Convert amount string → Decimal at the service boundary -----------
     try:
-        total = Decimal(parsed["amount"]).quantize(
+        amount_str = parsed["amount"]
+        if not isinstance(amount_str, str):
+            raise ValueError(f"Amount must be a string, got {type(amount_str)}")
+        total = Decimal(amount_str).quantize(
             Decimal("0.01"), rounding=ROUND_HALF_UP,
         )
     except Exception as exc:

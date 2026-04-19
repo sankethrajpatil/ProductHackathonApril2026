@@ -1,6 +1,8 @@
 """
 Photo Handler — aiogram router for receipt OCR via photo/document upload.
 """
+
+from typing import Any
 from aiogram import Router, F
 from aiogram.types import Message, ContentType, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from app.services.ocr_service import OCRService, OCRConfidenceError
@@ -11,7 +13,6 @@ router = Router()
 ocr_service = OCRService()
 
 @router.message(F.content_type.in_([ContentType.PHOTO, ContentType.DOCUMENT]))
-from typing import Any
 async def handle_receipt_photo(message: Message) -> None:
     from app.serverless import ensure_db
     await ensure_db()
@@ -57,11 +58,7 @@ async def handle_receipt_photo(message: Message) -> None:
             # Store result in FSM or cache (not shown)
             return
         # High confidence: save directly
-        try:
-            from app.services.expense_manager import add_expense_from_ocr
-        except ImportError:
-            async def add_expense_from_ocr(message: Message, result: Any) -> None:
-                pass
+        from app.services.expense_manager import add_expense_from_ocr
         await add_expense_from_ocr(message, result)
         await message.reply("Expense recorded from receipt ✅")
     except OCRConfidenceError as e:

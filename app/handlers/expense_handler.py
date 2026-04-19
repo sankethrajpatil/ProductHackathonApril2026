@@ -41,6 +41,8 @@ def _looks_like_expense(text: str) -> bool:
 
 @router.message(F.text)
 async def on_potential_expense(message: Message) -> None:
+    from app.serverless import ensure_db
+    await ensure_db()
     """Intercept text messages, run heuristic, then NLP + split + save."""
     if message.from_user is None or message.from_user.is_bot:
         return

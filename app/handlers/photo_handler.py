@@ -14,6 +14,8 @@ ocr_service = OCRService()
 
 @router.message(F.content_type.in_([ContentType.PHOTO, ContentType.DOCUMENT]))
 async def handle_receipt_photo(message: Message):
+    from app.serverless import ensure_db
+    await ensure_db()
     user_id = message.from_user.id
     try:
         check_ocr_rate_limit(user_id)

@@ -43,6 +43,8 @@ _PREMIUM_FEATURES = (
 
 @router.message(Command("premium"))
 async def on_premium_command(message: Message) -> None:
+    from app.serverless import ensure_db
+    await ensure_db()
     """Show premium info and purchase button."""
     if message.from_user is None:
         return

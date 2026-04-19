@@ -25,6 +25,8 @@ _PAY_RE = re.compile(
 
 @router.message(Command("pay", "settle"))
 async def on_pay_command(message: Message) -> None:
+    from app.serverless import ensure_db
+    await ensure_db()
     """Handle /pay @username amount [currency] — record a debt settlement."""
     if message.from_user is None:
         return

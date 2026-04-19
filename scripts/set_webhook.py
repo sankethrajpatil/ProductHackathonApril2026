@@ -10,11 +10,13 @@ import asyncio
 import os
 
 from aiogram import Bot
+from dotenv import load_dotenv
 
 WEBHOOK_URL = "https://splitbot-lilac.vercel.app/api/webhook"
 
 
 async def main() -> None:
+    load_dotenv()
     token = os.getenv("BOT_TOKEN", "").strip()
     if not token:
         raise RuntimeError("BOT_TOKEN is required")
